@@ -5,7 +5,6 @@ import bcrypt from "bcryptjs";
 export const signup = async (req, res) => {
   try {
     const { firstName, lastName, username, email, password } = req.body;
-    console.log(req.body);
 
     if (!password || password.length < 8) {
       return res.status(400).json({
@@ -54,7 +53,7 @@ export const signup = async (req, res) => {
     if (user) {
       generateTokenAndSetCookie(user._id, res);
       await user.save();
-      
+
       return res.status(201).json({
         success: true,
         message: "User registered successfully",
@@ -89,10 +88,42 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username: username });
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid username or password",
+      });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid username or password",
+      });
+    }
+
+    generateTokenAndSetCookie(user._id, res);
+
     res.status(200).json({
       success: true,
       message: "User logged in successfully",
-      data: req.body,
+      data: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        email: user.email,
+        followers: user.followers,
+        following: user.following,
+        isAdmin: user.isAdmin,
+        profileImg: user.profileImg,
+        coverImg: user.coverImg,
+        bio: user.bio,
+      },
     });
   } catch (error) {
     res.status(500).json({
@@ -105,10 +136,27 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
+    res.cookie("jwt", "", { maxAge: 0 });
     res.status(200).json({
       success: true,
       message: "User logged out successfully",
-      data: req.body,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    res.status(200).json({
+      success: true,
+      message: "User found",
+      data: user,
     });
   } catch (error) {
     res.status(500).json({
