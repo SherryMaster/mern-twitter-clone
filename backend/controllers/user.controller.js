@@ -92,20 +92,27 @@ export const getSuggestedUsers = async (req, res) => {
   try {
     const userId = req.user._id;
     const currentUser = await User.findById(userId);
-    
+
     const suggestedUsers = await User.aggregate([
-      { $match: { 
-        _id: { $ne: userId },
-        _id: { $nin: currentUser.following }
-      }},
-      { $sample: { size: 4 } },
-      { $project: { password: 0 } }
+      {
+        $match: {
+          $and: [
+            { _id: { $ne: userId } }, // Exclude the current user
+            { _id: { $nin: currentUser.following } }, // Exclude users already followed
+          ],
+        },
+      }, // Sample 4 random users from the remaining users
+      { $sample: { size: 4 } }, // Project the fields to exclude password
+      { $project: { password: 0 } },
     ]);
 
     res.status(200).json({
       success: true,
-      message: "Suggested users retrieved successfully",
-      data: suggestedUsers
+      message:
+        suggestedUsers.length > 0
+          ? "Suggested users retrieved successfully"
+          : "No users available to follow",
+      data: suggestedUsers,
     });
   } catch (error) {
     res.status(500).json({
