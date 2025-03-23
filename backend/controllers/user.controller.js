@@ -74,9 +74,38 @@ export const followUnfollowUser = async (req, res) => {
     await user.save();
     await userToFollow.save();
 
+    // TODO: return the id of user as response
     res.status(200).json({
       success: true,
       message: message,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const getSuggestedUsers = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const currentUser = await User.findById(userId);
+    
+    const suggestedUsers = await User.aggregate([
+      { $match: { 
+        _id: { $ne: userId },
+        _id: { $nin: currentUser.following }
+      }},
+      { $sample: { size: 4 } },
+      { $project: { password: 0 } }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Suggested users retrieved successfully",
+      data: suggestedUsers
     });
   } catch (error) {
     res.status(500).json({
