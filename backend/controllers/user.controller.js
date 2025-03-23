@@ -1,6 +1,11 @@
 import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
+import {
+  uploadImage,
+  deleteImage,
+  getPublicIdFromUrl,
+} from "../utils/cloudinaryUtils.js";
 
 export const getUserProfile = async (req, res) => {
   const { username } = req.params;
@@ -245,12 +250,86 @@ export const updateUser = async (req, res) => {
       updatedFields.push("bio");
     }
 
-    if (profileImg !== undefined && profileImg !== user.profileImg) {
+    // Handle profile image upload
+    if (req.files && req.files.profileImg) {
+      try {
+        const imagePath = req.files.profileImg[0].path;
+
+        // Delete old image from Cloudinary if it exists
+        if (user.profileImg) {
+          const publicId = getPublicIdFromUrl(user.profileImg);
+          if (publicId) {
+            await deleteImage(publicId);
+          }
+        }
+
+        // Upload new image to Cloudinary
+        const uploadResult = await uploadImage(
+          imagePath,
+          "twitter-clone/profile-images"
+        );
+
+        if (uploadResult.success) {
+          updates.profileImg = uploadResult.url;
+          updatedFields.push("profileImg");
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to upload profile image",
+            error: uploadResult.error,
+          });
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Error processing profile image",
+          error: error.message,
+        });
+      }
+    } else if (profileImg !== undefined && profileImg !== user.profileImg) {
+      // Handle profileImg URL provided directly (not as file upload)
       updates.profileImg = profileImg;
       updatedFields.push("profileImg");
     }
 
-    if (coverImg !== undefined && coverImg !== user.coverImg) {
+    // Handle cover image upload
+    if (req.files && req.files.coverImg) {
+      try {
+        const imagePath = req.files.coverImg[0].path;
+
+        // Delete old image from Cloudinary if it exists
+        if (user.coverImg) {
+          const publicId = getPublicIdFromUrl(user.coverImg);
+          if (publicId) {
+            await deleteImage(publicId);
+          }
+        }
+
+        // Upload new image to Cloudinary
+        const uploadResult = await uploadImage(
+          imagePath,
+          "twitter-clone/cover-images"
+        );
+
+        if (uploadResult.success) {
+          updates.coverImg = uploadResult.url;
+          updatedFields.push("coverImg");
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "Failed to upload cover image",
+            error: uploadResult.error,
+          });
+        }
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: "Error processing cover image",
+          error: error.message,
+        });
+      }
+    } else if (coverImg !== undefined && coverImg !== user.coverImg) {
+      // Handle coverImg URL provided directly (not as file upload)
       updates.coverImg = coverImg;
       updatedFields.push("coverImg");
     }
