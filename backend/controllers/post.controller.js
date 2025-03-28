@@ -1,6 +1,6 @@
 import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
-import { uploadImage } from "../utils/cloudinaryUtils.js";
+import { uploadImage, deleteImage, getPublicIdFromUrl } from "../utils/cloudinaryUtils.js";
 
 export const createPost = async (req, res) => {
   try {
@@ -70,7 +70,21 @@ export const deletePost = async (req, res) => {
       });
     }
 
-    await post.remove();
+    if (post.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - You can only delete your own posts",
+      });
+    }
+
+    if (post.img) {
+      const publicId = getPublicIdFromUrl(post.img);
+      if (publicId) {
+        await deleteImage(publicId);
+      }
+    }
+
+    await Post.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
