@@ -1,3 +1,4 @@
+import User from "../models/user.model.js";
 import Post from "../models/post.model.js";
 import { uploadImage } from "../utils/cloudinaryUtils.js";
 
